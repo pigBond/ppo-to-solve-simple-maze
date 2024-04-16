@@ -1,58 +1,106 @@
+import pygame
 import numpy as np
-import gym
-from gym import spaces
-import matplotlib.pyplot as plt
 
-class MazeEnv(gym.Env):
-    def __init__(self, maze):
-        super(MazeEnv, self).__init__()
+directions = ["上", "下", "左", "右"]
 
+class MazeEnv:
+    def __init__(self, maze, mode='single'):
         self.maze = np.array(maze)
-        self.target = (len(maze)-1, len(maze[0])-1)  # 假设终点是迷宫的右下角
-        self.start = (0, 0)  # 假设起点是迷宫的左上角
-
-        # 定义动作和状态空间
-        self.action_space = spaces.Discrete(4)  # 四个动作：上(0)、下(1)、左(2)、右(3)
-        self.observation_space = spaces.Box(low=0, high=1, shape=self.maze.shape, dtype=int)
-
+        # 查找起点和终点坐标
+        self.start = tuple(np.argwhere(self.maze == 2)[0])
+        self.target = tuple(np.argwhere(self.maze == 3)[0])
         self.current_position = self.start
+        self.step_count = 0
+        self.block_size = 40  # 设置每个格子的大小
+        self.mode = mode  # 'single' or 'path'
+        self.visited = set()  # 用于存储访问过的位置
+        self.effective_movement=False # 用于存储本次动作是否能产生有效的移动
+        self.init_screen()
+
+    def init_screen(self):
+        pygame.init()
+        self.screen = pygame.display.set_mode((self.maze.shape[1] * self.block_size, self.maze.shape[0] * self.block_size))
+        pygame.display.set_caption("Maze Visualization")
+        self.font = pygame.font.Font(None, 36)  # 字体初始化
+        self.render_static()  # 首次渲染静态元素
+
+    def render_static(self):
+        """ 渲染不会变的部分，如墙和路径 """
+        for x in range(self.maze.shape[0]):
+            for y in range(self.maze.shape[1]):
+                rect = pygame.Rect(y * self.block_size, x * self.block_size, self.block_size, self.block_size)
+                if self.maze[x, y] == 1:
+                    pygame.draw.rect(self.screen, (0, 0, 0), rect)  # 墙体是黑色
+                elif self.maze[x, y] == 2:
+                    pygame.draw.rect(self.screen, (0, 0, 255), rect)  # 起点是蓝色
+                elif self.maze[x, y] == 3:
+                    pygame.draw.rect(self.screen, (0, 255, 0), rect)  # 终点是绿色
+                else:
+                    pygame.draw.rect(self.screen, (255, 255, 255), rect)  # 路是白色
 
     def step(self, action):
         x, y = self.current_position
-        done = False  # 初始化 done 为 False
-
-        if action == 0:  # 向上
+        # 预测新位置 同时检查新位置是否合法
+        if action == 0 and x-1 > 0:  # 向上
             x -= 1
-        elif action == 1:  # 向下
+            self.effective_movement=True
+        elif action == 1 and x+1 < self.maze.shape[0] - 1:  # 向下
             x += 1
-        elif action == 2:  # 向左
+            self.effective_movement=True
+        elif action == 2 and y-1 > 0:  # 向左
             y -= 1
-        elif action == 3:  # 向右
+            self.effective_movement=True
+        elif action == 3 and y+1 < self.maze.shape[1] - 1:  # 向右
             y += 1
-
-        # 检查是否撞墙或出界
-        if x < 0 or x >= self.maze.shape[0] or y < 0 or y >= self.maze.shape[1] or self.maze[x, y] == 1:
-            reward = -5
-        elif (x, y) == self.target:
-            reward = 20
-            done = True  # 明确设置 done 为 True
+            self.effective_movement=True
         else:
-            reward = -1
-            done = False  # 这里再次确认 done 为 False，确保逻辑清晰
+            self.effective_movement=False
 
-        # 更新智能体的当前位置，确保不越界
-        self.current_position = (max(0, min(x, self.maze.shape[0]-1)), max(0, min(y, self.maze.shape[1]-1)))
-        return self.current_position, reward, done, {}
+        if self.maze[x, y] == 1:
+            # 保持在原位置
+            return self.current_position, -5, False
+        elif (x, y) == self.target:
+            return (x, y), 20, True
+        else:
+            self.current_position = (x, y)
+            self.visited.add(self.current_position)
+            self.step_count += 1
+            if self.effective_movement is True:
+                print("=====================================================================")
+                print("本次动作有效")
+                print("动作: ",directions[action])
+                print("得到位置: ",self.current_position)
+                print("步数: ",self.step_count)
+                print("=====================================================================")
+                self.effective_movement=False
+            return self.current_position, -1, False
+        
+    def render(self):
+            if self.mode == 'single':
+                self.render_static()  # 重新渲染静态元素，覆盖旧路径
+            # 绘制访问过的路径（如果在路径模式下）
+            if self.mode == 'path':
+                for pos in self.visited:
+                    rect = pygame.Rect(pos[1] * self.block_size, pos[0] * self.block_size, self.block_size, self.block_size)
+                    pygame.draw.rect(self.screen, (128, 128, 128), rect)
 
+            # 绘制当前位置和步数
+            x, y = self.current_position
+            rect = pygame.Rect(y * self.block_size, x * self.block_size, self.block_size, self.block_size)
+            pygame.draw.rect(self.screen, (128, 128, 128), rect)  # 当前位置用灰色标记
+            text = self.font.render(str(self.step_count), True, (0, 0, 0))
+            # self.font.render 方法用于创建包含文本的图像
+            text_rect = text.get_rect(center=(y * self.block_size + self.block_size // 2,
+                                            x * self.block_size + self.block_size // 2))
+            # text.get_rect() 方法获取文本图像的矩形区域，用于定位。
+            # center= 设置文本图像的中心点。计算方法是当前块的中心位置，确保文字居中于矩形。           
+            self.screen.blit(text, text_rect)
+
+            pygame.display.flip()  # 更新整个屏幕
+            
     def reset(self):
-        # 重置环境状态，智能体回到起点
         self.current_position = self.start
+        self.step_count = 0
+        self.visited = set([self.start])  # 重置访问位置记录
+        self.render_static()  # 重新渲染静态元素
         return self.current_position
-
-    def render(self, mode='human'):
-        if mode == 'human':
-            plt.imshow(self.maze, cmap='gray')  # 显示迷宫，用灰度图表示墙壁和通路
-            plt.scatter(self.current_position[1], self.current_position[0], c='red', s=100)  # 在迷宫中显示小人的位置，红色标记
-            plt.pause(0.1)  # 更新画面之前暂停0.1秒，以便观察到小人的移动
-            plt.draw()  # 更新画面
-
