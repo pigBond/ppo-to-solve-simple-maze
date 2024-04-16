@@ -222,20 +222,20 @@ def list_gif_size(env_name):
 
 if __name__ == "__main__":
 
-    env_name = "CartPole-v1"
-    has_continuous_action_space = False
-    max_ep_len = 400
-    action_std = None
+    # env_name = "CartPole-v1"
+    # has_continuous_action_space = False
+    # max_ep_len = 400
+    # action_std = None
 
     # env_name = "LunarLander-v2"
     # has_continuous_action_space = False
     # max_ep_len = 500
     # action_std = None
 
-    # env_name = "BipedalWalker-v2"
-    # has_continuous_action_space = True
-    # max_ep_len = 1500           # max timesteps in one episode
-    # action_std = 0.1            # set same std for action distribution which was used while saving
+    env_name = "BipedalWalker-v2"
+    has_continuous_action_space = True
+    max_ep_len = 1500           # max timesteps in one episode
+    action_std = 0.1            # set same std for action distribution which was used while saving
 
     # env_name = "RoboschoolWalker2d-v1"
     # has_continuous_action_space = True
