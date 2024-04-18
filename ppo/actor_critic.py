@@ -10,10 +10,6 @@ from torch.distributions import Categorical
 
 import numpy as np
 
-import gym
-# import roboschool
-import pybullet_envs
-
 from utils import setup_device
 
 device = setup_device()
@@ -76,9 +72,21 @@ class ActorCritic(nn.Module):  # 定义ActorCritic类，继承自nn.Module
             dist = MultivariateNormal(action_mean, cov_mat)  # 定义多变量正态分布
         else:  # 如果是离散动作空间
             action_probs = self.actor(state)  # 计算动作的概率分布
+
+            # print("*******************************************")
+            # print("state = ",state)
+            # print("action_probs = ",action_probs)
+            # print("*******************************************")
+
             dist = Categorical(action_probs)  # 定义分类分布
 
         action = dist.sample()  # 从分布中采样一个动作
+
+        # print("====================================================")
+        # print("action = ",action)
+        # print("action.detach() = ",action.detach())
+        # print("====================================================")
+
         action_logprob = dist.log_prob(action)  # 计算采样动作的对数概率
         state_val = self.critic(state)  # 计算状态价值
 

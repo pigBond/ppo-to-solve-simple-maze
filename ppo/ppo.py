@@ -15,8 +15,8 @@ import gym
 import pybullet_envs
 
 from utils import setup_device
-from actor_critic import ActorCritic
-from rollout_buffer import RolloutBuffer
+from ppo.actor_critic import ActorCritic
+from ppo.rollout_buffer import RolloutBuffer
 
 device = setup_device()
 
